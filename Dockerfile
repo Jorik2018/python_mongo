@@ -1,6 +1,9 @@
 FROM python:3.11
 
 # Install MongoDB tools
+RUN apt-get update && \
+    apt-get install -y apt-transport-https gnupg && \
+    apt-get update
 RUN apt-get update && apt-get install -y mongodb-tools
 
 # Install Poetry
