@@ -21,4 +21,4 @@ RUN poetry install --no-root
 COPY . /app
 
 # Command to run your application
-CMD ["poetry", "run", "python", "your_script.py"]
+CMD ["poetry", "run", "python", "mongodb_pandas_project/main.py","test"]
