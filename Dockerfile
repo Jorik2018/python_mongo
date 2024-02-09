@@ -1,11 +1,10 @@
 FROM python:3.11
 
 # Install MongoDB tools
-RUN apt-get update && \
-    apt-get install -y apt-transport-https gnupg && \
-    apt-get update
-RUN apt-get update && apt-get install -y mongodb-tools
-
+RUN wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian92-x86_64-100.3.1.deb && \
+    apt install ./mongodb-database-tools-*.deb && \
+    rm -f mongodb-database-tools-*.deb
+	
 # Install Poetry
 RUN pip install poetry
 
