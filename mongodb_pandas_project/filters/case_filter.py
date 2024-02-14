@@ -10,19 +10,22 @@ def filter():
     generate_csv('case', '_id,caseCode', notimed =True)
     tmp_file_path = f'{backup_dir}/case_tmp.csv'
     file_path = f'{backup_dir}/case.csv'
-    filtered_path = f'{backup_dir}/case_filtered.csv'
+    filtered_path = f'{backup_dir}/filtered_mongodb/case.csv'
     nrows = 1000
     if os.path.exists(filtered_path):os.remove(filtered_path)
     while True:
         df = pd.read_csv(file_path,skiprows = range(1, 000), nrows = nrows)
         if df.empty:
-            if(file_exists(filtered_path)):upload(filtered_path,f'case_filtered_{get_timestamp()}.csv' )
+            if(file_exists(filtered_path)):
+                upload(filtered_path,f'filtered_mongodb/case_filtered_{get_timestamp()}.csv' )
+                delete(pd.read_csv(filtered_path))
             break
+        print(f"===========| Chunk size = {len(df)} |============")
         df['_id'] = df['_id'].apply(lambda x: to_hex(x))
         df['caseCode'] = df['caseCode'].apply(lambda x: to_string(x))
         df['caseCodeInt'] = df['caseCode'].apply(lambda x: to_int(x))
         df['ObjectId'] = df['_id'].apply(lambda x: ObjectId(x))
-        print(df)
+        #print(df)
         filters = [
             filter_by_provisionreport,
             filter_by_financing,
@@ -31,14 +34,15 @@ def filter():
         for filter_function in filters:
             start_time = time.time()  # Record start time
             print(f"Applying filter: {filter_function.__name__}")
+            initial_len =len(df)
             df = filter_function(df)
             df = df[df['exist'] != True]
             end_time = time.time()  # Record the end time
-            print(df)
+            #print(df)
             minutes, seconds = divmod(end_time - start_time, 60)
-            print(f"Time used by {filter_function.__name__}: {int(minutes)} minutes and {seconds:.2f} seconds")
+            print(f"{initial_len} to {len(df)}.\t\tTime used by {filter_function.__name__}: {int(minutes)} minutes and {seconds:.2f} seconds")
         #print(df['ObjectId'].tolist())
-
+        os.makedirs(os.path.dirname(filtered_path), exist_ok=True)
         if os.path.exists(filtered_path):
             df[['_id', 'caseCode']].to_csv(filtered_path, mode='a', index=False, header=False)
         else:
@@ -47,6 +51,15 @@ def filter():
         os.remove(file_path)
         os.rename(tmp_file_path, file_path)
         
+def delete(df):
+    print("Rows to delete:", len(df))
+    if len(df)>0:
+        df['_id'] = df['_id'].apply(lambda x: to_hex(x))
+        #print(df['_id'].apply(lambda x: ObjectId(x)).tolist())
+        #print("Number of rows:", len(df))
+        #result = db['case'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
+        #print(f"Number of documents deleted: {result.deleted_count}")
+
 def filter_by_provisionreport(df):#provisionReport
     id_list = df['caseCode'].tolist()
     query = [

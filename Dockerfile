@@ -6,19 +6,20 @@ RUN wget https://fastdl.mongodb.org/tools/db/mongodb-database-tools-debian92-x86
     rm -f mongodb-database-tools-*.deb
 	
 # Install Poetry
-RUN pip install poetry
+RUN pip install poetry==1.7.1
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy only the pyproject.toml and poetry.lock to leverage Poetry's caching mechanism
-COPY pyproject.toml poetry.lock /app/
+COPY pyproject.toml poetry.lock ./
 
-# Install dependencies using Poetry
-RUN poetry install --no-root
+COPY mongodb_pandas_project ./mongodb_pandas_project
+
+RUN touch README.md
+
+RUN poetry install --without dev
 
 # Copy the rest of your application code
 COPY . /app
 
 # Command to run your application
-CMD ["poetry", "run", "python", "mongodb_pandas_project/main.py"]
+CMD ["poetry", "run", "python","-m", "mongodb_pandas_project.main"]

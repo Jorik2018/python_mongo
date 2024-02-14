@@ -90,9 +90,14 @@ def generate_backup(collections = False):
     for collection in collections.split(','):
         d = ['mongodump', '--uri', uri, '--db', database_name, '--gzip', '--out', backup_directory, '--collection',collection]
         print(d)
-        subprocess.run(d)
+        try:
+            subprocess.run(d)
+        except subprocess.CalledProcessError as e:
+            # Handle the error here
+            print("Error:", e)
+            return
     zip_folder(backup_directory,backup_directory+'.zip')
-    upload(backup_directory+'.zip', folder_name+'.zip')
+    upload(backup_directory+'.zip', f"backup_mongodb/{folder_name}.zip")
     
 def restore_backup(backup, restore_database_name = False):
     import glob
@@ -115,7 +120,7 @@ def generate_csv(collections = 'company', fields = False, notimed =False):
     if notimed:
         filename = f'{backup_dir}/{collections}.csv'
     else:
-        filename = f'{backup_dir}/{collections}_{timestamp}.csv'
+        filename = f'{backup_dir}/{collections}_{get_timestamp()}.csv'
     print(filename)
     print(fields)
     subprocess.run(['mongoexport', '--uri', uri, '--db', database_name, '--type','csv','--out', filename,
@@ -123,6 +128,7 @@ def generate_csv(collections = 'company', fields = False, notimed =False):
     
 def batching(input_file_path, output_file_path, skip_rows = 2000):
     chunk_size = 1000 
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, 'w') as output_file:
         writer = None
         for chunk in pd.read_csv(input_file_path, chunksize=chunk_size, skiprows=range(1, skip_rows + 1)):

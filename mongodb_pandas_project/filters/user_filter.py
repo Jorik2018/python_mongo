@@ -10,44 +10,48 @@ def filter():
     generate_csv('user', '_id,username', notimed =True)
     tmp_file_path = f'{backup_dir}/user_tmp.csv'
     file_path = f'{backup_dir}/user.csv'
-    filtered_path = f'{backup_dir}/user_filtered.csv'
+    filtered_path = f'{backup_dir}/filtered_mongodb/user.csv'
     nrows = 1000
     if os.path.exists(filtered_path):os.remove(filtered_path)
     while True:
         df = pd.read_csv(file_path,skiprows = range(1, 000), nrows = nrows)
         if df.empty:
-            if(file_exists(filtered_path)):upload(filtered_path,f'user_filtered_{get_timestamp()}.csv' )
+            if(file_exists(filtered_path)):
+                upload(filtered_path,f'filtered_mongodb/user_filtered_{get_timestamp()}.csv' )
+                delete(pd.read_csv(filtered_path))
             break
+        print(f"===========| Chunk size = {len(df)} |============")
         df['_id'] = df['_id'].apply(lambda x: to_hex(x))
         df['ObjectId'] = df['_id'].apply(lambda x: ObjectId(x))
-        print(df)
+        #print(df)
         filters = [
             filter_by_person,
             filter_by_provisionreport,
-            #filter_by_purchaseconfirmationreport,
-            #filter_by_receiptpayment,
-            #filter_by_rraareport,
-            #filter_by_shoppingcartdigital,
-            #filter_by_shoppingexperiencescore,
-            #filter_by_case,
-            #filter_by_filecertificationresponse,
-            #filter_by_grouppayment,
-            #filter_by_historycase,
-            #filter_by_netpromoterscore,
-            #filter_by_newuserreport,
-            #filter_by_notification,
-            #filter_by_onetimepassword
+            filter_by_purchaseconfirmationreport,
+            filter_by_receiptpayment,
+            filter_by_rraareport,
+            filter_by_shoppingcartdigital,
+            filter_by_shoppingexperiencescore,
+            filter_by_case,
+            filter_by_filecertificationresponse,
+            filter_by_grouppayment,
+            filter_by_historycase,
+            filter_by_netpromoterscore,
+            filter_by_newuserreport,
+            filter_by_notification,
+            filter_by_onetimepassword
         ]
         for filter_function in filters:
             start_time = time.time()  # Record start time
             print(f"Applying filter: {filter_function.__name__}")
+            initial_len =len(df)
             df = filter_function(df)
             df = df[df['exist'] != True]
             end_time = time.time()  # Record the end time
-            print(df)
+            #print(df)
             minutes, seconds = divmod(end_time - start_time, 60)
-            print(f"Time used by {filter_function.__name__}: {int(minutes)} minutes and {seconds:.2f} seconds")
-
+            print(f"{initial_len} to {len(df)}.\t\tTime used by {filter_function.__name__}: {int(minutes)} minutes and {seconds:.2f} seconds")
+        os.makedirs(os.path.dirname(filtered_path), exist_ok=True)
         if os.path.exists(filtered_path):
             df[['_id', 'username']].to_csv(filtered_path, mode='a', index=False, header=False)
         else:
@@ -55,6 +59,14 @@ def filter():
         batching(file_path,tmp_file_path,nrows)
         os.remove(file_path)
         os.rename(tmp_file_path, file_path)
+
+def delete(df):
+    print("Rows to delete:", len(df))
+    if len(df)>0:
+        df['_id'] = df['_id'].apply(lambda x: to_hex(x))
+        #print(df['_id'].apply(lambda x: ObjectId(x)).tolist())
+        result = db['user'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
+        print(f"Number of documents deleted: {result.deleted_count}")
 
 def filter_by_person(df):
     id_list = df['username'].tolist()
@@ -70,7 +82,7 @@ def filter_by_person(df):
     return df
 
 def filter_by_provisionreport(df):
-    print('filter by provisionReport')
+    #print('filter by provisionReport')
     username_list = df['username'].tolist()
     query = [
         {"$match": {
@@ -84,7 +96,7 @@ def filter_by_provisionreport(df):
     ]
     result_list = list(db['provisionReport'].aggregate(query))
     username_list = list(set([item.get('createUserCode', None) for item in result_list] + [item.get('userAssignedNumberDocument', None) for item in result_list]))
-    print(username_list)
+    #print(username_list)
     df['exist'] = df['username'].isin(username_list)
     return df
 
@@ -270,7 +282,7 @@ def filter_by_netpromoterscore(df):
         {"$project": {"_id":0,"idUser": "$_id.idUser", "idUser2": "$_id.idUser2", "code": "$_id.code"}},
     ]
     result_list = list(db['netPromoterScore'].aggregate(query))
-    print(result_list)
+    #print(result_list)
     df['exist'] = (
         df['_id'].isin(list(set([item.get('idUser', None) for item in result_list])))|
         df['_id'].isin(list(set([item.get('idUser2', None) for item in result_list])))|
