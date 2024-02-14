@@ -16,7 +16,7 @@ COPY mongodb_pandas_project ./mongodb_pandas_project
 
 RUN touch README.md
 
-RUN poetry install --without dev
+RUN poetry install --no-root --without dev
 
 # Copy the rest of your application code
 COPY . /app
