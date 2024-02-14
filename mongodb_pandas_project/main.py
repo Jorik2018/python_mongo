@@ -15,7 +15,7 @@ def filter_collection(collection):
 
 def main():
     parser = argparse.ArgumentParser(description='Export/Import MongoDB data to/from CSV file.')
-    parser.add_argument('operation', choices=['export', 'restore','collections','dump','csv','filter','test'], help='Operation to perform: export or import')
+    parser.add_argument('operation', choices=['export', 'restore','collections','dump','csv','filter','start','test'], help='Operation to perform: export or import')
     parser.add_argument('--collection', required=False, help='Collection name')
     parser.add_argument('--fields', required=False, help='Fields from collection to export in csv columns')
     parser.add_argument('--backup', required=False, help='Folder name of backup')
@@ -23,7 +23,12 @@ def main():
 
     args = parser.parse_args()
 
-    if args.operation == 'dump':
+    if args.operation == 'start':
+        from mongodb_pandas_project.backup_script import generate_backup
+        generate_backup('user,case')
+        filter_collection('user')
+        filter_collection('case')
+    elif args.operation == 'dump':
         from mongodb_pandas_project.backup_script import generate_backup
         generate_backup(args.collection)
     elif args.operation == 'restore':
