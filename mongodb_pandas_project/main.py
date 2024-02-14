@@ -1,7 +1,5 @@
 import argparse
 
-from mongodb_pandas_project.backup_script import test
-
 def filter_collection(collection):
     if collection == 'user':
         from mongodb_pandas_project.filters.user_filter import filter
@@ -34,6 +32,7 @@ def main():
     elif args.operation == 'filter':
         filter_collection(args.collection)
     elif args.operation == 'test':
+        from mongodb_pandas_project.backup_script import test
         test()
 
 if __name__ == '__main__':
