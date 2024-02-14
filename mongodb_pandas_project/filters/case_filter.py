@@ -1,11 +1,13 @@
 import os
-from mongodb_pandas_project.backup_script import batching, file_exists, generate_csv, backup_dir, db, get_timestamp, to_int, to_string, to_hex
+from mongodb_pandas_project.backup_script import batching, file_exists, generate_csv, backup_dir, get_db, get_timestamp, to_int, to_string, to_hex
 import pandas as pd
 from bson import ObjectId
 import time
 
 from mongodb_pandas_project.storage import upload
-    
+
+db = get_db()
+
 def filter():
     generate_csv('case', '_id,caseCode', notimed =True)
     tmp_file_path = f'{backup_dir}/case_tmp.csv'

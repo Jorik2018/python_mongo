@@ -2,17 +2,23 @@ import pandas as pd
 import subprocess
 from datetime import datetime
 from bson import ObjectId
-from mongodb_pandas_project.storage import upload
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 load_dotenv()
+
+
 uri = os.getenv('MONGODB_URI') 
 database_name = os.getenv('MONGODB_NAME')
 backup_dir = os.getenv('BACKUP_DIR','backup')
-client = MongoClient(uri)
-db = client[database_name]
+db = None
 
+def get_db():
+    global db
+    if db == None:
+        client = MongoClient(uri)
+        db = client[database_name]
+    return db
 
 def test():
     for key, value in os.environ.items():
@@ -62,12 +68,11 @@ def file_exists(file_path):
         return False
     
 def collections():
+    db = get_db()
     collections = db.list_collection_names()
     print(f'Collections in the database "{database_name}":')
     for collection in collections:
         print(collection)
-    
-
     print('Filter by person')
     username_list = df['username'].tolist()
     query = [
@@ -97,6 +102,7 @@ def generate_backup(collections = False):
             print("Error:", e)
             return
     zip_folder(backup_directory,backup_directory+'.zip')
+    from mongodb_pandas_project.storage import upload
     upload(backup_directory+'.zip', f"backup_mongodb/{folder_name}.zip")
     
 def restore_backup(backup, restore_database_name = False):
