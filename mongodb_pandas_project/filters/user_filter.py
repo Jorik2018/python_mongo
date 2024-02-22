@@ -1,14 +1,46 @@
+from datetime import datetime
+import json
 import os
 from mongodb_pandas_project.backup_script import batching, file_exists, generate_csv, backup_dir, get_db, get_timestamp, to_int, to_string, to_hex
 import pandas as pd
 from bson import ObjectId
 import time
-from mongodb_pandas_project.storage import upload
+from mongodb_pandas_project.storage import download, upload
 
+limit = 3000
 db = get_db()
-
+dateformat = "%Y-%m-%d %H:%M:%S"
 def filter():
-    generate_csv('user', '_id,username', notimed =True)
+    data_map = {}
+    query = None
+    date = None
+    skip = 0
+    if download(f'filtered_mongodb/limits.json', f'{backup_dir}/limits.json'):
+        if(file_exists(f'{backup_dir}/limits.json')):
+            with open(f'{backup_dir}/limits.json', "r") as file:
+                content = file.read()
+                try:
+                    data_map = json.loads(content)
+                    print(data_map)
+                    if 'user' in data_map:
+                        date = datetime.strptime(data_map['user']['highDate'],dateformat)
+                        skip = data_map['user']['$skip']
+                        query = json.dumps({"highDate": {"$gte": {"$date":date.isoformat()+"Z"}}})
+                except (TypeError, ValueError) as e:
+                    print(f"Error al analizar el contenido JSON: {e}")
+
+    generate_csv('user', '_id,username', notimed =True, query=query, sort = {"highDate": 1}, skip = skip, limit = limit)
+    pipeline = [
+        {"$sort": {"highDate": 1}},
+        {"$skip": skip},
+        {"$limit": limit},
+        {"$group": {"_id": None, "maxHighDate": {"$max": "$highDate"}}}
+    ]
+    if date: pipeline = [{"$match": {"highDate": {"$gte": date}}}] + pipeline
+    print(pipeline)
+    result = list(db['user'].aggregate(pipeline))
+    max_high_date = result[0]['maxHighDate'] if result else None
+
     tmp_file_path = f'{backup_dir}/user_tmp.csv'
     file_path = f'{backup_dir}/user.csv'
     filtered_path = f'{backup_dir}/filtered_mongodb/user.csv'
@@ -19,6 +51,14 @@ def filter():
         if df.empty:
             if(file_exists(filtered_path)):
                 upload(filtered_path,f'filtered_mongodb/user_filtered_{get_timestamp()}.csv' )
+                if date != None and max_high_date.strftime(dateformat) == date.strftime(dateformat): skip = skip + limit 
+                else: skip = 0
+                data_map['user'] = {'highDate':max_high_date.strftime(dateformat),'$skip':skip}
+                with open(f'{backup_dir}/limits.json', 'w+') as file:
+                    json.dump(data_map, file) 
+                print('next')
+                print(data_map)
+                upload(f'{backup_dir}/limits.json',f'filtered_mongodb/limits.json' )
                 delete(pd.read_csv(filtered_path))
             break
         print(f"===========| Chunk size = {len(df)} |============")
@@ -52,6 +92,7 @@ def filter():
             #print(df)
             minutes, seconds = divmod(end_time - start_time, 60)
             print(f"{initial_len} to {len(df)}.\t\tTime used by {filter_function.__name__}: {int(minutes)} minutes and {seconds:.2f} seconds")
+            if len(df)==0: break
         os.makedirs(os.path.dirname(filtered_path), exist_ok=True)
         if os.path.exists(filtered_path):
             df[['_id', 'username']].to_csv(filtered_path, mode='a', index=False, header=False)
@@ -66,8 +107,8 @@ def delete(df):
     if len(df)>0:
         df['_id'] = df['_id'].apply(lambda x: to_hex(x))
         #print(df['_id'].apply(lambda x: ObjectId(x)).tolist())
-        result = db['user'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
-        print(f"Number of documents deleted: {result.deleted_count}")
+        #result = db['user'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
+        #print(f"Number of documents deleted: {result.deleted_count}")
 
 def filter_by_person(df):
     id_list = df['username'].tolist()

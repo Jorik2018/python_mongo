@@ -120,17 +120,25 @@ def restore_backup(backup, restore_database_name = False):
         d = ['mongorestore', '--uri', uri,'--nsInclude',f'{restore_database_name}.{collection}','--gzip', '--archive', file_path]
         subprocess.run(d)
     
-def generate_csv(collections = 'company', fields = False, notimed =False):
+def generate_csv(collections = 'company', fields = False, notimed =False, query = False, sort = False, skip=False, limit = False):
+
+    
     if not collections: collections = 'company'
     if not fields: fields = '_id,username'
+    
     if notimed:
         filename = f'{backup_dir}/{collections}.csv'
     else:
         filename = f'{backup_dir}/{collections}_{get_timestamp()}.csv'
-    print(filename)
-    print(fields)
-    subprocess.run(['mongoexport', '--uri', uri, '--db', database_name, '--type','csv','--out', filename,
-                    '--collection', collections, '--fields', fields])
+
+    params = ['mongoexport', '--uri', uri, '--db', database_name, '--jsonFormat','canonical','--type','csv','--out', filename,
+                    '--collection', collections, '--fields', fields]
+    if query: params = params + ['--query',(query)]
+    if sort: params = params + ['--sort', str(sort)]
+    if skip: params = params + ['--skip', str(skip)]
+    if limit: params = params + ['--limit', str(limit)]
+    print(params)
+    subprocess.run(params)
     
 def batching(input_file_path, output_file_path, skip_rows = 2000):
     chunk_size = 1000 
