@@ -32,16 +32,7 @@ def filter():
 
 
     generate_csv('case', '_id,caseCode', notimed =True, query=query, sort = None, skip = skip, limit = limit)
-    
-    # pipeline = [
-    #     {"$sort": {"createDate": 1}},
-    #     {"$skip": skip},
-    #     {"$limit": limit},
-    #     {"$group": {"_id": None, "maxDate": {"$max": "$createDate"}}}
-    # ]
-    # if date: pipeline = [{"$match": {"createDate": {"$gte": date}}}] + pipeline
-    # print(pipeline)
-    # result = list(db['case'].aggregate(pipeline))
+
     max_high_date = None#result[0]['maxDate'] if result else None
 
     tmp_file_path = f'{backup_dir}/case_tmp.csv'
@@ -125,8 +116,8 @@ def delete(df):
         df['_id'] = df['_id'].apply(lambda x: to_hex(x))
         #print(df['_id'].apply(lambda x: ObjectId(x)).tolist())
         #print("Number of rows:", len(df))
-        #result = db['case'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
-        #print(f"Number of documents deleted: {result.deleted_count}")
+        result = db['case'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
+        print(f"Number of documents deleted: {result.deleted_count}")
 
 def filter_by_provisionreport(df):#provisionReport
     id_list = df['caseCode'].tolist()

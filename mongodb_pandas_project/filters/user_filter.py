@@ -107,8 +107,8 @@ def delete(df):
     if len(df)>0:
         df['_id'] = df['_id'].apply(lambda x: to_hex(x))
         #print(df['_id'].apply(lambda x: ObjectId(x)).tolist())
-        #result = db['user'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
-        #print(f"Number of documents deleted: {result.deleted_count}")
+        result = db['user'].delete_many({"_id": {"$in": df['_id'].apply(lambda x: ObjectId(x)).tolist()}})
+        print(f"Number of documents deleted: {result.deleted_count}")
 
 def filter_by_person(df):
     id_list = df['username'].tolist()

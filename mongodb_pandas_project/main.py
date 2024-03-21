@@ -22,7 +22,6 @@ def main():
     parser.add_argument('--db', required=False, help='Database to restore backup')
 
     args = parser.parse_args()
-
     if args.operation == 'start':
         from mongodb_pandas_project.backup_script import generate_backup
         generate_backup('user,case')
